@@ -99,10 +99,10 @@
                 frameCount++;
 
                 var loader = new Loader();
-                loader.contentLoaderInfo.addEventListener(Event.COMPLETE, function(e){
+                loader.contentLoaderInfo.addEventListener(Event.COMPLETE, function (e) {
                     screenshotBitmap = loader.content;
                 });
-                loader.load(new URLRequest("file://"+screenshotPath));
+                loader.load(new URLRequest("file://" + screenshotPath));
             }
 
             startCapScreenProcess();
@@ -130,6 +130,10 @@
         private function btnStopMonitor_clickHandler(event:MouseEvent):void {
             adbRunning = false;
         }
+
+        private function cbWindowAlwaysInFront_changeHandler(event:Event):void {
+            nativeWindow.alwaysInFront = cbWindowAlwaysInFront.selected;
+        }
         ]]></fx:Script>
 
 
@@ -143,6 +147,12 @@
             <s:Button label="开始监视" enabled="{!adbRunning}" id="btnStartMonitor" click="btnStartMonitor_clickHandler(event)"/>
             <s:Button label="停止监视" enabled="{adbRunning}" id="btnStopMonitor" click="btnStopMonitor_clickHandler(event)"/>
             <s:Label text="Frame:{frameCount}"/>
+            <s:Line yFrom="0" yTo="15">
+                <s:stroke>
+                    <s:SolidColorStroke color="#bbbbbb"/>
+                </s:stroke>
+            </s:Line>
+            <s:CheckBox label="本窗口始终呈现" selected="false" id="cbWindowAlwaysInFront" change="cbWindowAlwaysInFront_changeHandler(event)"/>
         </s:HGroup>
         <s:Image smooth="true" smoothingQuality="high" source="{screenshotBitmap}" width="100%" height="100%" horizontalAlign="center" verticalAlign="middle"/>
     </s:VGroup>
