@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark"
-                       xmlns:mx="library://ns.adobe.com/flex/mx"
                        width="380" height="600" showStatusBar="false"
                        creationComplete="creationCompleteHandler(event)">
     <fx:Script><![CDATA[
@@ -19,6 +18,8 @@
 
         [Bindable]
         private var frameCount:int = 0;
+        [Bindable]
+        private var screenshotBitmap:Object;
 
         private function btnBrowseForADB_clickHandler(event:MouseEvent):void {
             var f = new File();
@@ -96,7 +97,12 @@
 
             if (event.exitCode == 0) {
                 frameCount++;
-                viewer.load("file://"+screenshotPath);
+
+                var loader = new Loader();
+                loader.contentLoaderInfo.addEventListener(Event.COMPLETE, function(e){
+                    screenshotBitmap = loader.content;
+                });
+                loader.load(new URLRequest("file://"+screenshotPath));
             }
 
             startCapScreenProcess();
@@ -138,6 +144,6 @@
             <s:Button label="停止监视" enabled="{adbRunning}" id="btnStopMonitor" click="btnStopMonitor_clickHandler(event)"/>
             <s:Label text="Frame:{frameCount}"/>
         </s:HGroup>
-        <mx:Image width="100%" height="100%" id="viewer" horizontalAlign="center" verticalAlign="middle"/>
+        <s:Image smooth="true" smoothingQuality="high" source="{screenshotBitmap}" width="100%" height="100%" horizontalAlign="center" verticalAlign="middle"/>
     </s:VGroup>
 </s:WindowedApplication>
