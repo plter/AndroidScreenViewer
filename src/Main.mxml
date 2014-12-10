@@ -1,7 +1,143 @@
 <?xml version="1.0"?>
-<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark">
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark"
+                       xmlns:mx="library://ns.adobe.com/flex/mx"
+                       width="380" height="600" showStatusBar="false"
+                       creationComplete="creationCompleteHandler(event)">
     <fx:Script><![CDATA[
         import mx.controls.Alert;
+        import mx.events.FlexEvent;
+
+        [Bindable]
+        private var adbPath:String;
+        [Bindable]
+        private var adbRunning:Boolean = false;
+        private var screenshotPath:String;
+        private var adbFile:File = null;
+        private var capScreenProcess:NativeProcess;
+        private var pullScreenshotProcess:NativeProcess;
+        private var so:SharedObject = SharedObject.getLocal("AndroidScreenViewer");
+
+        [Bindable]
+        private var frameCount:int = 0;
+
+        private function btnBrowseForADB_clickHandler(event:MouseEvent):void {
+            var f = new File();
+            f.addEventListener(Event.SELECT, function (e) {
+                adbFile = f;
+                adbPath = f.nativePath;
+                saveAdbFilePath();
+            });
+            f.browseForOpen("选择adb文件");
+        }
+
+        private function btnStartMonitor_clickHandler(event:MouseEvent):void {
+            if (adbFile) {
+                try {
+                    if (adbFile.exists) {
+
+                        adbRunning = true;
+
+                        startCapScreenProcess();
+                    } else {
+                        Alert.show("ADB文件不存在", "提醒");
+                    }
+                } catch (e:Error) {
+                    trace(e);
+                    Alert.show("ADB文件不存在", "提醒");
+                }
+            } else {
+                Alert.show("ADB文件未选择", "提醒");
+            }
+        }
+
+        private function initNativeProcess() {
+            capScreenProcess = new NativeProcess();
+            capScreenProcess.addEventListener(NativeProcessExitEvent.EXIT, capScreenProcess_exitHandler);
+
+            pullScreenshotProcess = new NativeProcess();
+            pullScreenshotProcess.addEventListener(NativeProcessExitEvent.EXIT, pullScreenshotProcess_exitHandler);
+        }
+
+        private function startCapScreenProcess() {
+            var info = new NativeProcessStartupInfo();
+            info.executable = adbFile;
+            info.arguments.push("shell");
+            info.arguments.push("screencap");
+            info.arguments.push("-p");
+            info.arguments.push("/mnt/sdcard/screen.png");
+            capScreenProcess.start(info);
+        }
+
+        private function startPullScreenshotProcess() {
+            var info = new NativeProcessStartupInfo();
+            info.executable = adbFile;
+            info.arguments.push("pull");
+            info.arguments.push("/mnt/sdcard/screen.png");
+            info.arguments.push(screenshotPath);
+            pullScreenshotProcess.start(info);
+        }
+
+        private function capScreenProcess_exitHandler(event:NativeProcessExitEvent):void {
+            if (!adbRunning) {
+                return;
+            }
+
+            if (event.exitCode == 0) {
+                startPullScreenshotProcess();
+            } else {
+                startCapScreenProcess();
+            }
+        }
+
+        private function pullScreenshotProcess_exitHandler(event:NativeProcessExitEvent):void {
+            if (!adbRunning) {
+                return;
+            }
+
+            if (event.exitCode == 0) {
+                frameCount++;
+                viewer.load("file://"+screenshotPath);
+            }
+
+            startCapScreenProcess();
+        }
+
+        private function saveAdbFilePath() {
+            so.data.adbPath = adbFile.url;
+            so.flush();
+        }
+
+        private function readAdbFilePath() {
+            if (so.data.adbPath) {
+                adbFile = new File(so.data.adbPath);
+                adbPath = adbFile.nativePath;
+            }
+        }
+
+        private function creationCompleteHandler(event:FlexEvent):void {
+            readAdbFilePath();
+            initNativeProcess();
+
+            screenshotPath = File.applicationStorageDirectory.resolvePath("tmpscreenshot").nativePath;
+        }
+
+        private function btnStopMonitor_clickHandler(event:MouseEvent):void {
+            adbRunning = false;
+        }
         ]]></fx:Script>
-    <s:Button click="Alert.show('Hello, world')" label="Say Hello"/>
+
+
+    <s:VGroup width="100%" height="100%" paddingLeft="5" paddingTop="5" paddingRight="5" paddingBottom="5">
+        <s:HGroup width="100%" verticalAlign="middle">
+            <s:Label text="ADB路径"/>
+            <s:TextInput width="100%" text="{adbPath}"/>
+            <s:Button label="浏览ADB" id="btnBrowseForADB" click="btnBrowseForADB_clickHandler(event)"/>
+        </s:HGroup>
+        <s:HGroup width="100%" verticalAlign="middle">
+            <s:Button label="开始监视" enabled="{!adbRunning}" id="btnStartMonitor" click="btnStartMonitor_clickHandler(event)"/>
+            <s:Button label="停止监视" enabled="{adbRunning}" id="btnStopMonitor" click="btnStopMonitor_clickHandler(event)"/>
+            <s:Label text="Frame:{frameCount}"/>
+        </s:HGroup>
+        <mx:Image width="100%" height="100%" id="viewer" horizontalAlign="center" verticalAlign="middle"/>
+    </s:VGroup>
 </s:WindowedApplication>
